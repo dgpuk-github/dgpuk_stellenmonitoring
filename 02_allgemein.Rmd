@@ -1,0 +1,246 @@
+# Allgemeines
+
+## Land und Hochschule der Ausschreibung
+
+
+```{r emp_state}
+t_emp_state <- df %>% 
+    tabyl(emp_state) %>% 
+    adorn_pct_formatting(digits = 0)
+
+perc_de <- t_emp_state %>% 
+    filter(emp_state == "Deutschland") %>% 
+    select(percent) %>% 
+    as.character()
+
+perc_au <- t_emp_state %>% 
+    filter(emp_state == "Österreich") %>% 
+    select(percent) %>% 
+    as.character()
+
+perc_ch <- t_emp_state %>% 
+    filter(emp_state == "Schweiz") %>% 
+    select(percent) %>% 
+    as.character()
+    
+perc_other <- t_emp_state %>% 
+    filter(emp_state == "Sonstige") %>% 
+    select(percent) %>% 
+    as.character()
+
+n_other <- t_emp_state %>% 
+    filter(emp_state == "Sonstige") %>% 
+    length()
+
+other_state <- df %>% 
+    filter(!is.na(emp_state_other)) %>% 
+    select(emp_state_other) %>% 
+    distinct(emp_state_other) %>% 
+    as_vector() %>% 
+    str_c(sep = "", collapse = ", ")   
+    
+```
+
+Im Rahmen der Codierung wurde zunächst geprüft, aus welchem Land die Stellenanzeigen stammen. Wenig überraschend macht dabei Deutschland mit `r perc_de` den größten Anteil aus. Aus Österreich stammen `r perc_au` Stellen und aus der Schweiz `r perc_ch`. Die restlichen n = `r n_other` kommen aus dem europäischen Ausland (`r other_state`).
+
+In Tabelle \@ref(tab:pospercountry) sind die ausgeschriebenen Positionen nach Land der Ausschreibung aufgeschlüßelt.
+
+```{r pospercountry}
+df %>% 
+  tabyl(job_position, emp_state) %>% 
+  adorn_totals(where = "row") %>% 
+  filter(!(job_position == "Assistenzprofessur" | job_position == "Applied Professor")) %>% 
+  rename(Position = job_position) %>% 
+  kable(caption = "Position nach Land") %>% 
+  kable_styling(latex_options = "HOLD_position")
+  
+```
+
+
+In Tabelle \@ref(tab:institutions) sind die Hochschulen mit fünf oder mehr Ausschreibungen im Sample aufgelistet. Insbesondere die Universität Wien sticht mit `r df %>% filter(emp_institution == "Universität Wien") %>% nrow() ` Anzeigen deutlich hervor.
+
+```{r institutions}
+df %>% 
+    tabyl(emp_institution) %>% 
+    arrange(desc(n)) %>% 
+    filter(n >= 5) %>% 
+    select(-percent) %>% 
+    rename(`Ausschreibende Hochschule` = emp_institution) %>% 
+    kable(caption = "Hochschulen mit drei oder mehr Ausschreibungen im Sample") %>% 
+    kable_styling(latex_options = "HOLD_position")
+    
+```
+
+Die geografische Verteilung der Stellenanzeigen ist in Abbildung \@ref(fig:germanmap) dargestellt.
+
+```{r germanmap, fig.cap="Stellenanzeigen nach Standort (nur Deutschland)", cache = TRUE, message = FALSE}
+pos <- read_csv2("data/uni_positions.csv")
+
+df_position <- left_join(df, pos) %>% 
+  filter(emp_state == "Deutschland" & !is.na(lon)) %>% 
+  group_by(emp_institution) %>% 
+  summarise(n = n(), lon = min(lon), lat = min(lat)) 
+
+germany <- getData(country = "Germany", level = 1) 
+
+ggplot() +
+  geom_polygon(data = germany,
+               aes(x = long, y = lat, group = group),
+               colour = "#ffffff", fill = "#eeeeee") +
+  geom_point(data = df_position,
+             aes(x = lon, y = lat, size = n),
+             alpha = .5, color = "#13a085") + 
+  coord_map() + 
+  labs(color = 'Anzahl Stellenanzeigen') + 
+  theme(legend.position = "none",
+          axis.title = element_blank(),
+          axis.text = element_blank(),
+          axis.ticks = element_blank(),
+          panel.grid = element_blank())
+
+```
+
+## Fristen zur Bewerbung & Besetzung
+
+```{r durationapply}
+
+df_dur <- df %>% 
+    mutate(duration_apply = (job_deadline - job_published),
+           duration_process = (job_start - job_deadline)) %>% 
+    select(id, file_name, starts_with("duration_"), starts_with("job_"), -job_title, pos_grp)
+
+nasap <- sum(df$job_asap, na.rm = TRUE)
+
+```
+
+Die Zeitspanne zwischen Ausschreibung und Deadline der Bewerbung beträgt im Mittel *M* = `r mean(df_dur$duration_apply, na.rm = TRUE) %>%  round(0)` Tage (*SD* = `r sd(df_dur$duration_apply, na.rm = TRUE) %>% round(0)`. Allerdings fließen nur n = `r sum(!is.na(df_dur$duration_apply))` Fälle in diese Analyse ein, weil das Datum der Veröffentlichung der Stellenangebote sehr oft unbekannt ist (Minimum: `r min(df_dur$duration_apply, na.rm = TRUE) `, Maximum: `r max(df_dur$duration_apply, na.rm = TRUE)`).
+
+Etwas mehr Daten liegen zur vorgesehen Dauer des Sichtungs- und Einstellungsprozesses vor, denn Angaben zum gewünschten Starttermin des Anstellungsverhältnisses finden sich fast immer. In vielen Fällen (n = `r nasap`) soll die Einstellung "asap" (as soon as possible) erfolgen. Die mittlere Dauer zwischen Ende der Deadline und Beginn der Anstellung lässt sich jedoch nur berechnen, wenn beide Daten ermittelt werden konnten. Dies gilt für n = `r sum(!is.na(df_dur$duration_process))` Anzeigen. Die Mittlere Dauer  beträgt *M* = `r mean(df_dur$duration_process, na.rm = TRUE) %>% round(0)` (*SD* = `r sd(df_dur$duration_process, na.rm = TRUE) %>% round(0)`) (Minimum: `r min(df_dur$duration_process, na.rm = TRUE)`, Maximum: `r max(df_dur$duration_process, na.rm = TRUE)`).
+
+Für die Besetzung von Professuren wird sich naturgemäß wegen des aufwändigen Berufungsprozesses im Mittel deutlich mehr Zeit gelassen als für Wissenschaftliche Mitarbeiterinnen (Tabelle \@ref(tab:timeperposition)). 
+
+```{r timeperposition}
+df_dur %>% 
+  group_by(pos_grp) %>% 
+  summarise(M = mean(duration_process, na.rm = TRUE), 
+            SD = sd(duration_process, na.rm = TRUE),
+            n = n()) %>%
+  mutate(M = as.integer(M)) %>% 
+  filter(pos_grp != "Sonstiges") %>% 
+  rename(Position = pos_grp) %>% 
+  adorn_rounding(0) %>% 
+  kable(caption = "Durchschnittliche Dauer zwischen Deadline und Beginn der Stelle nach Position in Tagen") %>% 
+  kable_styling(latex_options = "HOLD_position")
+
+```
+
+
+Für Bewerber:innen ist natürlich die Frage interessant, ob der Stellenmarkt saisonal schwankt. Natürlich lässt die Betrachtung von nur einem Jahr darauf kaum Rückschlüsse zu. Es scheint aber so zu sein, dass Deadlines für die Bewerbungen eher am Anfang der oder in den Semesterferien liegen. Wie in Abbildung \@ref(fig:monthly) zu sehen ist, verstrichen 2020 die meisten Bewerbungsdeadlines allerdings bereits im Januar (für diese Analyse wurden nur Stellenanzeigen betrachtet, die 2020 endeten, Januar 2021 ist nicht enthalten).
+
+```{r monthly, fig.cap="Stellenanzeigen im Jahresverlauf"}
+month_palette <- c("#008cc0", "#587a96", "#13a085", "#95a04a", "#feba41", "#ffd75d",
+                   "#ffa5a6", "#d41a6c", "#d8582e", "#c88352", "#8a7052", "#204a6b")
+
+df %>% 
+    filter(job_deadline < "2021-01-01") %>% 
+    mutate(job_deadline_month = as_factor(labelled(month(job_deadline), 
+                                                   c(Januar = 1, Februar = 2, März = 3, 
+                                                     April = 4, Mai = 5, Juni = 6,
+                                                     Juli = 7, August = 8, September = 9,
+                                                     Oktober = 10, November = 11, Dezember = 12)))) %>% 
+    tabyl(job_deadline_month) %>% 
+    #mutate(pos = cumsum(n) + (0.5)) %>% 
+    ggplot(aes(job_deadline_month, n, fill = job_deadline_month)) +
+    geom_bar(stat = "identity") +
+    geom_text(aes(y = n + 0.75, label = n)) +
+    geom_text(aes(label = job_deadline_month), angle = 90, y = 0.5, hjust = 0, color = "#ffffff") +
+    scale_fill_manual(values = month_palette) +
+    theme(legend.position = "none",
+          axis.title = element_blank(),
+          axis.text = element_blank(),
+          axis.ticks = element_blank(),
+          panel.grid = element_blank())
+    
+```
+
+
+## Ausgeschriebene Positionen
+
+Die Stellenanzeigen verteilen sich wie folgt auf die verschiedenen Positionen (Tabelle \@ref(tab:position)):
+
+```{r position}
+
+df %>% 
+    tabyl(job_position) %>%
+    adorn_rounding(digits = 2) %>% 
+    arrange(desc(n)) %>%
+    rename(Stelle = job_position, Prozent = percent) %>% 
+    filter(n > 0) %>% 
+    kable(caption = "Ausgeschriebene Positionen im Sample")
+
+df <- df %>% 
+  filter(job_position != "Sonstige")
+
+```
+Bei den "sonstigen" Stellen handelt es sich um Stipendien, Gastprofessuren oder Honorarauftäge (für Forschung oder Lehre). Sie werden im Folgenden nicht weiter berücksichtigt.
+
+
+
+## Angaben zu Gleichstellung, Behinderung und Familienfreundlichkeit etc.
+
+Viele Stellenangebote enthalten Angaben zur Gleichstellung, zu Bewerber:innen mit Schwerbehinderung oder Migrationshintergrund. Außerdem werben viele Hochschulen mit Familienfreundlichkeit und Dual-Career. Zudem werden bisweilen Angaben dazu gemacht, ob eine Stelle Teilzeit-fähig ist. Abbildung \@ref(fig:appl) zeigt getrennt für Stellenanzeigen für Professuren bzw. WiMis auf, welche Angaben zu wieviel Prozent in den Stellenanzeigen enthalten waren.
+
+```{r appl, fig.cap="Angaben zur Besetzung (Professur/WiMi)", warning = FALSE}
+
+color = c("#13a085", "#feba41")
+
+#op <- par(mar = c(1, 2, 2, 2))
+
+df_appl <- df %>% 
+    filter(pos_grp != "Sonstiges") %>% 
+    mutate(grp = as.character(pos_grp)) %>% 
+    select(grp, starts_with("appl_")) %>% 
+    group_by(grp) %>%
+    summarise(n = n(), 
+              `Chancengleichheit` = sum(appl_chances)/n(), 
+              `Familienfreundlichkeit` = sum(appl_family)/n(), 
+              `Dual-Career` = sum(appl_dualcareer)/n(),
+              `Teilzeit-Option` = sum(appl_parttime_option)/n(),
+              `Diversität` = sum(appl_diversity)/n(), 
+              `Geschlecht` = sum(appl_gender)/n(),
+              `Schwerbehinderung` = sum(appl_disability)/n(), 
+              ) %>% 
+    rbind(rep(1,7) , rep(0,7) , .)
+
+df_appl %>% 
+    select(-grp, -n) %>% 
+    radarchart(
+        axistype = 1,
+        caxislabels = c("0%", "25%", "50%", "75%", "100%"),
+        pcol = color,  plwd = 2, plty = 1, # pfcol = scales::alpha(color, 0.5),
+        cglcol = "grey", cglty = 1, cglwd = 0.8,
+        axislabcol = "grey", 
+    )
+
+legend(
+  x = "topright", legend = c("WiMi", "Professur"), horiz = FALSE,
+  bty = "n", pch = 20 , col = color,
+  text.col = "black"
+  )
+
+```
+
+
+Es wird offensichtlich, dass bei Professuren die Angaben zur Familienfreundlichkeit, Gleichstellung und Schwerbehinderung häufiger erwähnt werden. Explizit teilzeitfähig sind die Professuren hingegen sehr selten. Auch Dual-Career-Angebote werden kaum erwähnt. Die Möglichkeit zur Teilzeitarbeit wird hingegen bei WiMis häufiger hervorgehoben -- jedoch ebenfalls auf niedrigem Niveau. Die Stellen sind ja ohnehin zu einem großen Anteil keine vollen Stellen.
+
+## Angaben zur Übernahme von Reisekosten
+
+```{r costs}
+df_costs <- df %>% 
+    tabyl(appl_cost)
+
+costs_no_perc <- df_costs %>% filter(appl_cost == 1) %>% select(n)/nrow(df)*100
+
+```
+
+Von den `r nrow(df)` Stellenangeboten enthielten die allermeisten (`r df_costs %>% filter(appl_cost == 0) %>% select(n)`) keine Angabe dazu, ob die Anfahrtskosten für ein Bewerbungsgespräch übernommen werden. In `r df_costs %>% filter(appl_cost == 2) %>% select(n)` Fällen wurde explizit darauf hingewiesen, dass die Kosten *nicht* übernommen werden. Nur in `r df_costs %>% filter(appl_cost == 1) %>% select(n)` Fällen (= `r round(costs_no_perc[1,1], 1)` %) fand sich der Hinweis, dass der Arbeitgeber die Kosten der Anreise trägt.

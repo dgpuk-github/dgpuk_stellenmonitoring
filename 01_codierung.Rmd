@@ -1,0 +1,69 @@
+\newpage
+
+# Codierung
+
+```{r setup1, include = FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+
+pacman::p_load(raster, tidyverse, janitor, haven, lubridate, fmsb, knitr, kableExtra, mapproj)
+theme_set(theme_minimal())
+
+sample_year <- 2000
+
+df <- read_csv2("data/sm2020_v1.csv", na = c("", "NA")) %>% 
+    select(-starts_with("X")) %>% 
+    mutate(germany = ifelse(emp_state == 1, 1, 0),
+           emp_state = as_factor(labelled(emp_state, c(Deutschland = 1, Österreich = 2,
+                                                       Schweiz = 3, `Sonstiges` = 4))),
+           job_published = as_date(job_published),
+           job_deadline = as_date(job_deadline),
+           job_start = as_date(job_start),
+           pos_grp = ifelse(job_position < 20, 1, NA),
+           pos_grp = ifelse(job_position >= 20 & job_position < 30, 2, pos_grp),
+           pos_grp = ifelse(job_position >= 30, 3, pos_grp),
+           pos_grp = as_factor(labelled(pos_grp, c(WiMi = 1, Professur = 2, Sonstiges = 3))),
+           job_has_limit = as_factor(labelled(job_has_limit, c(`weiß nicht` = 0, befristet = 1, unbefristet = 2))),
+           job_position = as_factor(labelled(job_position, 
+                                                   c(`WiMi allgemein (unklar/egal)` = 10,
+                                                     `WiMi PräDoc` = 11,
+                                                     `WiMi PostDoc` = 12,
+                                                     `WiMi LbA` = 13,
+                                                     `Professur (allgemein)` = 20,
+                                                     `W1-Professur` = 21,
+                                                     `Assistenzprofessur` = 22,
+                                                     `W2-Professur` = 23,
+                                                     `W3-Professur` = 24,
+                                                     `Applied Professor` = 25,
+                                                     `Sonstige Ausschreibung` = 30))),
+           job_extension = ifelse(job_extension == 0 & job_third_party_fund == 1, 3, job_extension),
+           job_extension = as_factor(labelled(job_extension, c(`keine Angabe` = 0,
+                                                               `Verlängerung` = 1,
+                                                               `Entfristung` = 2,
+                                                               `keine Verlängerung: Drittmittelprojekt` = 3,
+                                                               `keine Verlängerung: Vertretung` = 4))),
+           job_pay = as_factor(labelled(job_pay, c(`keine Angabe` = 0,
+                                                   `W1` = 1,
+                                                   `W2` = 2,
+                                                   `W3` = 3,
+                                                   `TVL-12` = 12,
+                                                   `TVL-13` = 13,
+                                                   `TVL-14` = 14,
+                                                   `A13` = 23,
+                                                   `A14` = 24,
+                                                   `A15` = 25,
+                                                   `A16` = 26,
+                                                   `Sonstiges` = 30,
+                                                   `W1` = 21
+                                                   ))),
+           job_quali_grp = ifelse(job_qualification_option > 0, 1, 0) 
+           )
+
+df %>% 
+    filter(is.na(emp_state)) %>% 
+    select(id, coder)
+    
+
+```
+Die Genese des "Stellenmonitorings für die DGPuK" ist lang. Zum ersten Mal wurde das Projekt auf dem zweiten "Nachwuchstag der DGPuK" 2014 in Berlin angedacht. Es folgte die Entwicklung eines ausführlichen Codebuchs und endlich 2019, der erste Pretest mit drei Codierer:innen an der HMTM Hannover. Der Pretest fiel in großen Teilen zufriedenstellend aus. Bei den Variablen, die eine geringe Intercoder-Relaibilität (Krippendorff´s Alpha < .7) aufwiesen wurden nachgebessert, indem die Codieranweisungen präzisiert und das Codebuch umstrukturiert wurde. Dies betrifft insbesondere den Bereich der Aufgaben und Anforderungen an den Bewerbenden. Zudem wurde das Codebuch deutlich gekürzt, um es handhabbarer zu machen. Das aktuelle Codebuch kann [hier](data/Konzept_Stellenmonitoring_2021-08-05.pdf) heruntergeladen werden.
+
+Die Codierung der Stellenanzeigen aus 2020 erfolgte im Frühjahr und Sommer 2021 durch eine Honorarkraft, die von der DGPuK finanziert wurde. Insgesamt wurden im Erhebungszeitraum `r nrow(df)` Stellenanzeigen auf der [DGPuK-Website](https://www.dgpuk.de/de/stellenangebote.html) veröffentlicht, die alle codiert wurden.

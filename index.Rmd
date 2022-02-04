@@ -1,0 +1,21 @@
+--- 
+title: "DGPuK-Stellenmonitoring 2020"
+author: "Julia Niemann-Lenz & Manuel Menke"
+date: "`r Sys.Date()`"
+site: bookdown::bookdown_site
+documentclass: article
+bibliography: [literatur.bib]
+biblio-style: apalike
+link-citations: yes
+description: "Stellenmonitoring der DGPuK -- Pilotprojekt 2020/21"
+---
+\newpage
+# Vorwort {-}
+Die Diskussion über faire Arbeitsbedingungen in der Wissenschaft ist ein Dauerthema der Arbeit der Mitelbauvertreter:innen. Bislang existierte kein Überblick über den Stellenmarkt der Kommunikations- und Medienwissenschaft im deutschsprachigen Raum. Es fehlten sowohl Erkenntnisse über die Anzahl der für unser Fach ausgeschriebenen Stellen, noch über deren konkrete Ausgestaltung. 
+
+Ein solcher Überblick ist vor dem Hintergrund der üblichen Befristung der meisten Arbeitsplätze im Wissenschaftssystem, der damit verbundenen hohen Fluktuation der Personen auf den jeweiligen Stellen und der Prekarisierung des wissenschaftlichen Mittelbaus notwendig und wurde von den DGPuK-Mittelbauvertreter:innen seit langem angestrebt. Relevant ist dies nicht nur als Orientierungshilfe für (zukünftige) Doktorand:innen und Postdocs, sondern auch als eine dauerhaft angelegte Standortbestimmung eines sich rasant wandelnden und professionalisierenden Fachs.
+Nach dem Vorbild der Deutschen Vereinigung für Politische Wissenschaft (DVPW), die seit 2011 ein regelmäßiges Stellenmonitoring durchführt, wurde als Pilotprojekt die Codierung der Stellenanzeigen die im Jahr 2020 auf der Website der DGPuK veröffentlicht wurden, durchgeführt.
+
+Wir wünschen Euch und Ihnen viel Spaß bei der Lektüre,
+
+Julia Niemann-Lenz & Manuel Menke

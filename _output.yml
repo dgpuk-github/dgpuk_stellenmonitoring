@@ -1,0 +1,9 @@
+bookdown::gitbook:
+  css: style.css
+  config:
+    toc:
+      before: |
+        <li><a href="./">DGPuK Stellenmonitoring</a></li>
+      after: |
+        <li><a href="https://www.dgpuk.de/de/nachwuchs-dkpuk-%C3%BCber-uns.html">Mittelbauvertretung der DGPuK</a></li>
+    download: ["pdf", "epub"]

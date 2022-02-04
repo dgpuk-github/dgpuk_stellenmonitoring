@@ -1,0 +1,310 @@
+# Wissenschaftliche Mitarbeiter:innen
+
+## Land
+```{r }
+df %>% 
+  filter(pos_grp == "WiMi" ) %>% 
+  tabyl(emp_state) %>% 
+  adorn_rounding(2) %>% 
+  rename(Land = emp_state, Prozent = percent) %>% 
+  kable(caption = "Wissenschaftliche Mitarbeiter nach Land") %>% 
+  kable_styling(latex_options = "HOLD_position")
+```
+
+Die folgenden Analysen beziehen sich nur auf Deutschland.
+
+## Befristungen der Wissenschaftlichen Mitarbeiter:innen
+
+Die Stellen für Wissenschaftliche Mitarbeiter:innen in Deutschland wurden in der Regel befristet und unter Berufung auf das WissZeitVG ausgeschrieben. Das WissZeitVG sieht nach § 2 Abs. 1 vor, dass die Befristung mit einer (angestrebten) Qualifizierung (= Promotion oder Habilitation) begründet wird. Nach § 2 Abs. 2 sind auch Befristungen möglich, wenn die Stelle aus Mitteln Dritter finanziert wird und diese Mittel zeitlich befristet sind. Tabelle \@ref(tab:limits) gibt einen Überblick über Befristung vs. Nicht-Befristung bei den WiMi-Stellen im Sample. Wenig überraschend wird deutlich, dass Stellenausschreibungen für unbefristete Stellen quasi kaum existieren.
+
+
+```{r limits}
+df_lim <- df %>% 
+    filter(pos_grp == "WiMi" & emp_state == "Deutschland") %>% 
+    mutate(limits_first = job_limit_year * 12 + job_limit_month,
+           limits_total = limits_first + job_extension_conc * 12) %>% 
+    select(id, job_position, job_extension_conc, contains("limit")) 
+
+df_lim %>% 
+    tabyl(job_position, job_has_limit) %>% 
+    mutate(sm = befristet + unbefristet + `weiß nicht`) %>% 
+    filter(sm > 0) %>% 
+    select(job_position, befristet, unbefristet, everything(), -sm) %>% 
+    rename(Stelle = job_position, `keine Angabe` = `weiß nicht`) %>% 
+    select(-`keine Angabe`) %>% 
+    kable(caption = "Befristungen bei Wissenschaftlichen Mitarbeiterstellen") %>% 
+    kable_styling(latex_options = "HOLD_position")
+
+npostdoc <- df_lim %>% 
+  filter(job_position == "WiMi PostDoc" | job_position == "WiMi LbA") %>% 
+  nrow()
+
+```
+Im ganzen Sample findet sich nur eine unbefristete Mittelbau-Stelle als **Lehrkraft für besondere Aufgaben (LbA)**. Da bei LbA-Stellen keine eigene Qualifizierung vorgesehen ist, gilt für sie keine Lehrreduzierung. Außerdem können sie in der Regel zudem nicht nach § 2 Abs. 1 WissZeitVG befristet werden (weil keine Qualifizierung vorgesehen ist). Dennoch findet sich im Sample auch eine Stelle als LbA, die ausdrücklich nach § 2 Abs. 1 WissZeitVG auf 3 Jahre befristet ist, und die 12 LVS aufweist. Eine Möglichkeit der Entfristung wird in der Stellenanzeige nicht erwähnt. Wie der/die Stelleninhaberin unter diesen Bedingungen ein Qualifizierungsziel erreichen soll, bleibt offen. Die dritte LbA-Stelle folgt anderen Befristungsregeln (außerhalb des WissZeitVG) und eine Entfristung wird angestrebt.
+
+```{r limitreason}
+
+perc_quali <- df %>% 
+    filter(pos_grp == "WiMi" & job_has_limit == "befristet") %>% 
+    summarize(perc = round(sum(job_quali_grp, na.rm = TRUE)/length(job_quali_grp)*100, 0))
+
+
+perc_thirdparty <- df %>% 
+    filter(pos_grp == "WiMi" & job_has_limit == "befristet") %>% 
+    summarize(perc = sum(job_third_party_fund, na.rm = TRUE)/length(job_third_party_fund)*100)
+
+perc_thirdparty_prae <- df %>% 
+    filter(job_position == "WiMi PräDoc" & job_has_limit == "befristet") %>% 
+    summarize(perc = sum(job_third_party_fund, na.rm = TRUE)/length(job_third_party_fund)*100)
+
+perc_thirdparty_post <- df %>% 
+    filter(job_position == "WiMi PostDoc" & job_has_limit == "befristet") %>% 
+    summarize(perc = sum(job_third_party_fund, na.rm = TRUE)/length(job_third_party_fund)*100)
+
+perc_thirdparty_alg <- df %>% 
+    filter(job_position == "WiMi allgemein (unklar/egal)" & job_has_limit == "befristet") %>% 
+    summarize(perc = sum(job_third_party_fund, na.rm = TRUE)/length(job_third_party_fund)*100)
+
+df <- df %>% 
+  mutate(job_limit_first = (job_limit_year * 12 + job_limit_month)/12,
+         #job_extension_conc = ifelse(is.na(job_extension_conc), 0, job_extension_conc),
+         job_limit_total = job_limit_first + job_extension_conc)
+
+#df %>% 
+#  select(job_limit_year, job_limit_month, job_limit_first, job_extension_conc, job_limit_total)
+
+#mean(df$job_extension_conc, na.rm = TRUE)
+
+#job_has_scholarship kommt nicht vor
+#df %>% filter(pos_grp == "WiMi") %>% 
+#  tabyl(job_has_scholarship)
+
+phdprogperc <- df %>% 
+  filter(job_position == "WiMi PräDoc") %>% 
+  tabyl(job_phd_program) %>% 
+  filter(job_phd_program == 1)  %>% 
+  select(percent)
+
+```
+
+In `r perc_quali` Prozent der befristeten Stellenangebote findet sich ein Hinweis auf die **anzustrebende Qualifikation**. Eine **strukturierte Dokorandenausbildung**, etwa im Rahmen eines PhD-Programms, wird in `r round(phdprogperc*100, 0)` Prozent der PräDoc-Stellen erwähnt.
+
+Die eigene Qualifikation ist aber nicht immer der (einzige) Befristungsgrund. In `r round(perc_thirdparty, 0)` Prozent der Fälle findet die Beschäftigung zumindest teilweise in einem **durch Drittmittel finanzierten Projekt** statt. Dies betrifft Stellen für Promovierende geringfügig mehr als solche für Postdocs (`r round(perc_thirdparty_prae, 0)` gegenüber `r round(perc_thirdparty_post, 0)` Prozent), während die Stellen, bei denen die Besetzung sowohl durch eine:n Postdoc als auch ein:e Doktorand:in möglich ist, zu `r round(perc_thirdparty_alg, 0)` Prozent aus Drittmitteln finanziert werden.
+
+Die **Dauer der Befristung** für den im Stellenagebot beworbenen Vertrag beträgt zwischen `r round(min(df$job_limit_first, na.rm = TRUE), 2)` und `r round(max(df$job_limit_first, na.rm = TRUE), 2)` Jahren. Bei der 4-Monatsstelle handelt es sich um eine Elternzeitvertretung. Die mittlere Vertragsdauer ist *M* = `r round(mean(df$job_limit_first, na.rm = TRUE), 2)` Jahre (*SD* = `r round(sd(df$job_limit_first, na.rm = TRUE), 2)`).
+
+```{r limitextensiondf, message = FALSE}
+df_extension <- df %>% 
+  filter(pos_grp == "WiMi" & job_has_limit == "befristet") %>% 
+  tabyl(job_extension) %>% 
+  adorn_rounding(2) 
+
+extension_perc <- df_extension %>% 
+  filter(job_extension == "Verlängerung") %>% 
+  select(percent)
+
+unlimit <- df_extension %>% 
+  filter(job_extension == "Entfristung") %>% 
+  select(n)
+  
+```
+
+In einigen Stellenangeboten wird nach Ablauf des ersten Vertrages eine **Verlängerung** in Aussicht gestellt (Tabelle \@ref(tab:limitextension)). Dies ist jedoch nur bei `r round(extension_perc*100, 0)` Prozent der Stellenangebote für WiMis der Fall. In `r unlimit` Fällen wird sogar eine **Entfristung** des Vertrags angestrebt. 
+
+```{r limitextension, message = FALSE}
+df_extension %>% 
+  rename(`Angaben zur Verlängerung` = job_extension, Prozent = percent) %>% 
+  kable(caption = "Angaben zur Vertragsverlängerung") %>% 
+  kable_styling(latex_options = "HOLD_position")
+
+```
+
+Bei Stellen in Drittmittelprojekten ist es übrigens nicht so, dass hier zwangsläufig *keine* Verlängerung möglich wäre. Einige Stellenausschreibende geben explizit an, dass sie die Möglichkeit einer Weiterbeschäftigung anstreben (in der Regel dann ohne Angabe einer konkreten Vertragslaufzeit). Umgekehrt wird häufig aber nicht deutlich gemacht, dass bei Beschäftigung im Drittmittelprojekt nicht ohne weiteres eine Anschlussbeschäftigung möglich ist. Dies ist jedoch möglicherweise insbesondere für Berufseinsteiger:innen nicht offensichtlich.
+
+Wenn ein Anschlussvertrag in Aussicht gestellt wird, ist dort bisweilen sogar bereits dessen mögliche Dauer angegeben. Nimmt man die Vertragsdauern von Erst- und Anschlussvertrag zu einer **Gesamtdauer** zusammen, ergeben sich Befristungszeiten von `r round(min(df$job_limit_total, na.rm = TRUE), 2)` bis `r round(max(df$job_limit_total, na.rm = TRUE), 2)` Jahre. Im Mittel sind es *M* = `r round(mean(df$job_limit_total, na.rm = TRUE), 2)` Jahre (*SD* = `r round(sd(df$job_limit_total, na.rm = TRUE), 2)`).
+
+
+## Vergütung
+
+Die Vergütung wird zumindest bei Stellen in Deutschland in der Regel angegeben und sie erfolgt meist nach TV-L. Im Ausland fehlen die Angaben häufig (Österreich) oder sie lassen sich wegen höherer Lebenshaltungskosten nur unzureichend in das TVL-Schema einordnen (Schweiz). Daher bezieht sich die folgende Auswertung wieder nur auf Stellen in Deutschland (Tabelle \@ref(tab:wimipay)).
+
+```{r wimipay}
+df_wimipay <- df %>% 
+  filter(pos_grp == "WiMi" & emp_state == "Deutschland") %>% 
+  tabyl(job_pay) %>% 
+  adorn_rounding(2) %>% 
+  filter(n > 0) 
+
+df_wimipay %>% 
+  rename(`Gehaltsklasse` = job_pay, Prozent = percent) %>% 
+  kable(caption = "Vergütung der wissenschaftlichen Mitarbeiter:innen") %>% 
+  kable_styling(latex_options = "HOLD_position")
+
+
+wimi14 <- df_wimipay %>%  
+  filter(job_pay	== "TVL-14")  %>%  
+  select(n)
+
+wimi23<- df_wimipay %>%  
+  filter(job_pay	== "A13")  %>%  
+  select(n)
+```
+
+Es ist auffällig, dass der Löwenanteil der WiMi-Stellen **nach TVL-13 bezahlt** wird. Geringere Gehälter finden sich glücklicherweise nur selten, höhere allerdings auch kaum. Von den ausgeschriebenen Post-Doc- und LbA-Stellen werden nur `r wimi14` (von `r npostdoc`) nach TVL-14 vergütet, in `r wimi23` zusätzlichen Anzeigen wird die Möglichkeit erwähnt, sich als Akademischer Rat auf Zeit (Gehaltsgruppe A13) anstellen zu lassen. Ein Detailblick in die Daten zeigt, dass insbesondere die Stellen, die bereits entfristet sind oder bei denen eine Entfristung angestrebt wird, auch höhere Gehaltsklassen bieten. Wird "keine Angabe" gemacht, so kann dies ein unbeabsichtigtes Versäumnis sein. Vorsicht geboten ist jedoch bei verwaltungsnahen Stellen geboten (z.B. Studiengangskoordination). Bewerber:innen sollten hier unbedingt klären, welche Eingruppierung erfolgen soll.
+
+
+## Stellenprozente
+
+Tabelle \@ref(tab:wimipercent) zeigt, dass **weniger als die Hälfte der Stellen in Vollzeit** ausgeschrieben wurden. Nichteinmal der DFG-Standard von 65% hat sich überall durchgesetzt. Nach wie vor ist es offenbar ein gangbarer Weg, gerade Prädoc-Stellen mit 50% zu besetzen. Auch die zeitgleiche Suche nach zwei (oder mehr) 50%-Doktorand:innen findet sich im Sample. 
+
+```{r wimipercent, messages = FALSE}
+df %>% 
+    filter(emp_state == "Deutschland" & 
+           pos_grp == "WiMi" ) %>% 
+  tabyl(job_percentage) %>% 
+  adorn_rounding(2) %>% 
+  rename(Stellenprozente = job_percentage, Prozent = percent) %>% 
+  kable(caption = "Stellenprozente der Stellen für Wissenschaftliche Mitarbeiter:innen") %>% 
+  kable_styling(latex_options = "HOLD_position")
+
+```
+
+Tabelle \@ref(tab:wimimeanperc) macht die Unterschiede in der nominalen Arbeitszeit zwischen Prä- und PostDoc offensichtlich. Sie zeigt die durchschnittlichen Stellenprozente für die unterschiedlichen Positionen. Für Stellen nach der Promotion hat sich erfreulicherweise in der Kommunikationswissenschaft eine nominale Arbeitszeit von 100% weitgehend durchgesetzt. 
+
+```{r wimimeanperc}
+df %>% 
+    filter(emp_state == "Deutschland" & 
+           pos_grp == "WiMi" ) %>% 
+  group_by(job_position) %>% 
+  summarise(`Durchschnittliche Stellenprozente` = round(mean(job_percentage, na.rm = TRUE),2), n = n()) %>% 
+  arrange(`Durchschnittliche Stellenprozente`) %>% 
+  rename(Stelle = job_position) %>% 
+  kable(caption = "Durchschnittliche Stellenprozente nach Position") %>% 
+  kable_styling(latex_options = "HOLD_position")
+```
+
+Alternativ als Kreuztabelle:
+```{r}
+df %>% 
+  filter(emp_state == "Deutschland" & 
+           pos_grp == "WiMi") %>% 
+  tabyl(job_position, job_percentage) %>% 
+  filter(`1` != 0) %>% 
+  rename(Stellenprozente = job_position) %>% 
+  kable(caption = "Kreuztabelle: Stellenprozente nach Position (WiMis)") %>% 
+  kable_styling(latex_options = "HOLD_position")
+```
+
+## Lehrverpflichtung
+
+Ein wichtiger Aspekt der Stellen für Wissenschaftliche Mitarbeiter:innen ist die Lehrverpflichtung, die an die Stelle geknüpft wird. in Tabelle \@ref(tab:teachperperc) sind die Lehrverpflichtungen für die unterschiedlichen Stellentypen abgetragen. Zur Ermittlung einer vergleichbaren Kennzahl sind nur Stellen berücksichtigt, die überhaupt eine Lehrverpflichtung beinhalten und die Lehrverpflichtung wird jeweils auf 100 Stellenprozente hochgerechnet (Beispiel: eine 50%-Stelle mit 2 LVS wäre äquivalent zu einer 100%-Stelle mit 4 LVS). 
+
+```{r teachperperc}
+df %>% 
+  filter(emp_state == "Deutschland" & 
+           pos_grp == "WiMi" &
+           !is.na(job_teaching)) %>% 
+  mutate(teachperperc = job_teaching/job_percentage) %>% 
+  group_by(job_position) %>% 
+  summarize(M = round(mean(teachperperc), 2), SD = round(sd(teachperperc), 2), n = n()) %>% 
+  rename(Position = job_position) %>% 
+  kable(caption = "Lehrverpflichtung nach Position") %>% 
+  kable_styling(latex_options = "HOLD_position")
+```
+
+
+Tatsächlich liegt die Anzahl der LVS, die pro Semester geleistet werden müssen erstaunlich hoch. Die reguläre Lehrverpflichtung beträgt in den meisten Bundesländern auf Qualifikationsstellen 4 LVS pro Semester (Ausnahmen bspw. Bayern, hier sind es 5 LVS). Dies liegt daran, dass es Stellenanzeigen gibt, die zwar einen Teilzeitumfang haben, aber dennoch volle LVS. Da nicht alle Stellenanbieter eine Angabe darüber machen, ob die LVS pro Semester oder pro Jahr gelten, ist die Validität dieser Variable leider zweifelhaft. Die Angabe pro Semester scheint jedoch üblich zu sein.
+
+```{r}
+tp_teaching <- df %>% 
+    filter(emp_state == "Deutschland" & 
+           pos_grp == "WiMi" &
+           job_third_party_fund == 1  &
+           job_teaching > 0) %>% 
+  nrow()
+```
+
+Abschließend ist zu bemerken, dass es im Sample auch `r tp_teaching` Stellen mit Drittmittelfinanzierung gibt, die LVS beinhalten.
+
+## Anforderungen und Aufgaben
+
+```{r wimi_job_require_exam}
+df_exam <- df %>% 
+  filter(emp_state == "Deutschland" & 
+           pos_grp == "WiMi") %>% 
+  tabyl(job_require_exam) %>% 
+  adorn_rounding(2)
+
+```
+
+In den allermeisten Stellenanzeigen für WiMis wird ein fachbezogener Abschluss gefordert (`r round(df_exam$percent[[2]]*100, 0)` Prozent). Wird diese Angabe konkretisiert, wird -- wenig überraschend -- meist ein Abschluss in Kommunikationswissenschaft genannt, gefolgt von Medienwissenschaft und Journalistik. Tabelle \@ref(tab:wimisubject) listet die Fächer, die häufiger als 3 Mal genannt wurden. Mehrfachnennungen innerhalb einer Stellenanzeige sind dabei selbstverständlich möglich. Neben den angrenzenden sozialwissenschaftlichen Disziplinen fällt auf, dass auch Informatik und Data Science besonders häufig vertreten sind. 
+
+```{r wimisubject}
+subjects <- df %>% 
+  filter(emp_state == "Deutschland" & 
+           pos_grp == "WiMi") %>% 
+  select(job_subject_exam)
+
+subjects <- subjects$job_subject_exam %>% 
+  paste0(collapse="; ") %>% 
+  str_split(pattern = "; ") 
+
+tabyl(subjects[[1]]) %>% 
+  adorn_rounding(2) %>% 
+  arrange(desc(n)) %>% 
+  filter(`subjects[[1]]` != "NA" & !is.na(`subjects[[1]]`) &
+          `subjects[[1]]` != "vergleichbare Disziplin" & 
+           `subjects[[1]]` != "verwandte Disziplin"  & 
+           `subjects[[1]]` != "angrenzende sozialwissenschaftliche Disziplin"  &
+           n > 3) %>% 
+  rename(Fach = `subjects[[1]]`, Prozent = percent) %>% 
+  kable(caption = "Häufigkeiten: Gewünschter Fachspezifischer Abscchluss bei WiMi-Stellen") %>% 
+  kable_styling(latex_options = "HOLD_position")
+```
+
+Für die weiteren Angaben in den Stellenbeschreibungen wurden jeweils getrennt codiert, ob es sich um eine Anforderung handelt, also Erfahrungen und Fähigkeiten, die der/diejenige bereits mitbringen muss oder um Tätigkeiten/Aufgaben, die er/sie zukünftig auf der jeweiligen Stelle ausführen soll. Einen Überblick liefert Tabelle \@ref(tab:wimitasks):
+
+```{r wimitasks, warning=FALSE, message=FALSE}
+
+df_requiretasks <- df %>% 
+  filter(emp_state == "Deutschland" & 
+           pos_grp == "WiMi") %>% 
+  select(id, job_topic_require:job_admin_conc, -ends_with("_conc")) %>% 
+  pivot_longer(cols = job_topic_require:job_admin_task, names_to = "var_name", values_to = "val") %>% 
+  mutate(what = case_when(str_detect(var_name, "require") ~ "require",
+                          str_detect(var_name, "task") ~ "task"),
+         var_name = case_when(str_detect(var_name, "topic") ~ "Inhaltliche Schwerpunkte",
+                              str_detect(var_name, "method") ~ "Methodenkenntnisse",
+                              str_detect(var_name, "software") ~ "Software- und Programmierkenntnisse",
+                              str_detect(var_name, "research") ~ "Forschungstätigkeit",
+                              str_detect(var_name, "funding") ~ "Eigene Drittmittelprojekte",
+                              str_detect(var_name, "coordinate") ~ "Koordinierung Drittmittelprojekte",
+                              str_detect(var_name, "teaching") ~ "Lehre",
+                              str_detect(var_name, "admin_") ~ "Administration")) 
+
+df_require <- df_requiretasks %>% 
+  filter(what == "require") %>% 
+  tabyl(var_name, val) %>%
+  select(-NA_) %>% 
+  mutate(require_p = round(`1`/ (`0` + `1`)*1, 2)) %>% 
+  select(var_name, require_n = `1`, require_p)
+  
+df_task <- df_requiretasks %>% 
+  filter(what == "task") %>% 
+  tabyl(var_name, val) %>%
+  select(-NA_) %>% 
+  mutate(task_p = round(`1`/ (`0` + `1`)*1, 2)) %>% 
+  select(var_name, task_n = `1`, task_p)
+  
+left_join(df_require, df_task) %>% 
+  arrange(desc(require_n)) %>% 
+  rename(Bereich = var_name,
+         `n` = require_n, 
+         `Prozent`= require_p, 
+         `n `= task_n, 
+         `Prozent `= task_p) %>% 
+  kable(caption = "Häufigkeiten: Nennung von Anforderungen und Tätigkeiten der WiMi-Stellen") %>% 
+  kable_styling(latex_options = "HOLD_position") %>% 
+  add_header_above(c(" " = 1, "Anforderungen" = 2, "Aufgaben" = 2))
+  
+```

@@ -1,0 +1,17 @@
+base
+sp
+raster
+tidyverse
+ggplot2
+tibble
+tidyr
+readr
+purrr
+dplyr
+stringr
+forcats
+janitor
+haven
+lubridate
+fmsb
+knitr

@@ -1,0 +1,150 @@
+# Professuren
+
+Im Erhebungszeitraum wurden n = `r df %>% filter(pos_grp == "Professur") %>% nrow()` Professuren über die Website der DGPuK ausgeschrieben. Die Verteilung der ausgeschriebenen Professuren über die Länder ähnelt dem der Anteile für die Stellenausschreibungen insgesamt (Tabelle \@ref(tab:profland)). Es springt ins Auge, dass im Erhebungszeitraum keine Professur in der Schweiz ausgeschrieben war, dies mag an dem ohnehin nur geringen Anteil an Stellenausschreibungen aus der Schweiz liegen.
+
+```{r profland}
+df %>% 
+    filter(pos_grp == "Professur") %>% 
+    tabyl(emp_state) %>% 
+    adorn_rounding(digits = 2) %>% 
+    rename(Land = emp_state, Prozent = percent) %>% 
+    kable(caption = "Professuren nach Land") %>% 
+    kable_styling(latex_options = "HOLD_position")
+```
+
+## Besoldungsgruppen
+
+Zum Vergleich der Besoldungsgruppen werden hier wieder nur die n =  Professuren aus Deutschland betrachtet. Tabelle \@ref(tab:profpay) offenbart, dass im erhebungszeitraum die meisten Professuren auf W2-Level ausgeschrieben wurden. Juniorprofessuren und W3 sind deutlich seltener, aber in etwa gleich häufig. 
+
+```{r profpay}
+
+df %>% 
+    filter(pos_grp == "Professur", emp_state == "Deutschland") %>%
+    tabyl(job_position) %>%
+    adorn_rounding(digits = 2) %>% 
+    filter(n > 0) %>% 
+    rename(Besoldungsgruppe = job_position, Prozent = percent) %>% 
+    kable(caption = "Professuren in Deutschland nach Besoldungsgruppe") %>% 
+    kable_styling(latex_options = "HOLD_position")
+```
+
+In der Tabelle sind einige Stellenanzeigen als "Professur (allgemein)" ausgewiesen. Es handelt sich in diesem Fall nicht etwa um "Open-Rank"-Professuren, sondern um Anzeigen von privaten Hochschulen, bei denen eine Angabe zur Vergütung fehlt.
+
+## Juniorprofessuren
+
+Im Erhebungszeitraum wurden `r df %>% filter(job_position == "W1-Professur") %>% nrow()` Juniorprofessuren (W1) in Deutschland ausgeschrieben. Von diesen war erfreulicherweise der überwiegende Anteil (n = `r df %>% filter(job_position == "W1-Professur") %>% summarize(sum(job_has_tenure))`) mit einem Tenure-Track versehen.
+
+Die Denominationen der Juniorprofessuren sind in Tabelle \@ref(tab:w1denomination) gelistet. Es wird deutlich, dass vor allem von den Junior-Professor:innen erwartet wird, dass sie das Feld der *Digitalen Kommunikation* abdecken.
+
+```{r w1denomination}
+df %>% 
+    filter(emp_state == "Deutschland" & 
+           job_position == "W1-Professur" ) %>% 
+    rename(Hochschule = emp_institution, Besoldungsgruppe = job_position, Denomination = prof_denomination) %>% 
+    select(Hochschule, Denomination) %>% 
+    kable(caption = "Denomination der ausgeschriebenen Juniorprofessuren (W1)") %>% 
+    column_spec(column = 1, width ="4cm") %>% 
+    column_spec(column = 2, width ="7cm") %>% 
+    kable_styling(latex_options = "HOLD_position")
+```
+## W2- und W3-Professuren
+
+```{r w23denomination}
+df %>% 
+    filter(emp_state == "Deutschland" & 
+           pos_grp == "Professur" &
+           job_position != "W1-Professur" ) %>% 
+    select(emp_institution, job_position, prof_denomination) %>% 
+    rename(Hochschule = emp_institution, Besoldungsgruppe = job_position, Denomination = prof_denomination) %>% 
+    select(Hochschule, Besoldungsgruppe, Denomination) %>% 
+   #mutate(Besoldungsgruppe = as_factor(labelled(Besoldungsgruppe, c("privat" = 5, "W2" = "W2-Professur", "W3" = "W3-Professur")))) %>% 
+    arrange(Besoldungsgruppe, Hochschule) %>% 
+    kable("latex", booktabs = TRUE, longtable = TRUE, caption = "Denomination der ausgeschriebenen Professuren (W2, W3 und private Hochschulen)") %>% 
+    column_spec(column = 1, width ="2cm") %>% 
+    column_spec(column = 2, width ="3cm") %>% 
+    column_spec(column = 3, width ="6cm") %>% 
+    kable_styling(latex_options = c("hold_position", "repeat_header"))
+```
+
+## Anforderungen und Aufgaben
+
+```{r prof_job_require_exam}
+df_exam <- df %>% 
+  filter(emp_state == "Deutschland" & 
+           pos_grp == "Professur") %>% 
+  tabyl(job_require_exam) %>% 
+  adorn_rounding(2)
+
+```
+
+Auch bei den Professuren wird fachliche Einschlägigkeit gefordert gefordert. Wird diese Angabe konkretisiert, meist die Kommunikationswissenschaft genannt, gefolgt von Medienwissenschaft (siehe Tabelle \@ref(tab:profsubject)). Andere Fächer sind hier zwar auch vertreten, ein Trend lässt sich aber nicht ausmachen, da sie nur vereinzelt genannt werden (jeweils n = 1).  
+
+```{r profsubject}
+subjects <- df %>% 
+  filter(emp_state == "Deutschland" & 
+           pos_grp == "Professur") %>% 
+  select(job_subject_exam)
+
+subjects <- subjects$job_subject_exam %>% 
+  paste0(collapse="; ") %>% 
+  str_split(pattern = "; ") 
+
+tabyl(subjects[[1]]) %>% 
+  adorn_rounding(2) %>% 
+  arrange(desc(n)) %>% 
+  filter(`subjects[[1]]` != "NA" & !is.na(`subjects[[1]]`) &
+          `subjects[[1]]` != "vergleichbare Disziplin" & 
+           `subjects[[1]]` != "verwandte Disziplin"  & 
+           `subjects[[1]]` != "angrenzende sozialwissenschaftliche Disziplin"  &
+           `subjects[[1]]` != "mit Bezug zur Stelle"  &
+           n > 1) %>% 
+  rename(Fach = `subjects[[1]]`, Prozent = percent) %>% 
+  kable(caption = "Häufigkeiten: Gewünschter Fachspezifischer Abscchluss bei Professuren") %>% 
+  kable_styling(latex_options = "HOLD_position")
+```
+
+Für die weiteren Angaben in den Stellenbeschreibungen wurden jeweils getrennt codiert, ob es sich um eine Anforderung handelt, also Erfahrungen und Fähigkeiten, die der/die (angehende) Professor:in bereits mitbringen muss oder um Tätigkeiten/Aufgaben, die er/sie zukünftig auf der jeweiligen Stelle ausführen soll. Einen Überblick liefert Tabelle \@ref(tab:proftasks):
+
+```{r proftasks}
+
+df_requiretasks <- df %>% 
+  filter(emp_state == "Deutschland" & 
+           pos_grp == "Professur") %>% 
+  select(id, job_topic_require:job_admin_conc, -ends_with("_conc")) %>% 
+  pivot_longer(cols = job_topic_require:job_admin_task, names_to = "var_name", values_to = "val") %>% 
+  mutate(what = case_when(str_detect(var_name, "require") ~ "require",
+                          str_detect(var_name, "task") ~ "task"),
+         var_name = case_when(str_detect(var_name, "topic") ~ "Inhaltliche Schwerpunkte",
+                              str_detect(var_name, "method") ~ "Methodenkenntnisse",
+                              str_detect(var_name, "software") ~ "Software- und Programmierkenntnisse",
+                              str_detect(var_name, "research") ~ "Forschungstätigkeit",
+                              str_detect(var_name, "funding") ~ "Eigene Drittmittelprojekte",
+                              str_detect(var_name, "coordinate") ~ "Koordinierung Drittmittelprojekte",
+                              str_detect(var_name, "teaching") ~ "Lehre",
+                              str_detect(var_name, "admin_") ~ "Administration")) 
+
+df_require <- df_requiretasks %>% 
+  filter(what == "require") %>% 
+  tabyl(var_name, val) %>%
+  mutate(require_p = round(`1`/ (`0` + `1`)*1, 2)) %>% 
+  select(var_name, require_n = `1`, require_p)
+  
+df_task <- df_requiretasks %>% 
+  filter(what == "task") %>% 
+  tabyl(var_name, val) %>%
+  mutate(task_p = round(`1`/ (`0` + `1`)*1, 2)) %>% 
+  select(var_name, task_n = `1`, task_p)
+  
+left_join(df_require, df_task, by = "var_name") %>% 
+  arrange(desc(require_n)) %>% 
+  rename(Bereich = var_name,
+         `n` = require_n, 
+         `Prozent`= require_p, 
+         `n `= task_n, 
+         `Prozent `= task_p) %>% 
+  kable(caption = "Nennung von Anforderungen und Tätigkeiten") %>% 
+  kable_styling(latex_options = "HOLD_position") %>% 
+  add_header_above(c(" " = 1, "Anforderungen" = 2, "Aufgaben" = 2))
+  
+```
+
